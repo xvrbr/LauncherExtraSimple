@@ -21,8 +21,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
@@ -34,7 +36,7 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
 
     //Constantes
-    val NOMBRE_DE_CLICKS_POUR_SETTINGS = 50
+    private val NOMBRE_DE_CLICKS_POUR_SETTINGS = 2
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,11 +50,6 @@ class MainActivity : ComponentActivity() {
                 )
                 {
 
-                    //Boutons-texte de noms d'app
-                    val pm = packageManager
-                    val listeApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                    val launchableApps = listeApps.filter { pm.getLaunchIntentForPackage(it.packageName) != null }
-
                     Row {
                         Column {
                             //Petite Horloge tranquille
@@ -60,40 +57,30 @@ class MainActivity : ComponentActivity() {
                             val formattedTime = SimpleDateFormat("hh:mm", Locale.getDefault())
                                 .format(Date.from(currentTime))
                             Text(text = formattedTime, color = Color.White, fontSize = 30.sp)
+                            /*
                             LazyColumn {
                                 items(items = launchableApps) { application ->
                                     val packageInfo = pm.getPackageInfo(application.packageName, 0)
-                                    btnTextApp(
+                                    BtnTextApp(
                                         nomApp = packageInfo.applicationInfo.loadLabel(pm).toString(),
                                         nomPackage = application.packageName,
                                         pm = pm,
                                         contexte = this@MainActivity
                                     )
                                 }
-                                /*
-                                for (application in listeApps) {
-                                    btnTextApp(
-                                        application.loadLabel(pm).toString(),
-                                        application.packageName,
-                                        pm,
-                                        this@MainActivity
-                                    )
-                                }
-
-                                 */
-                            }
+                            }*/
 
                         }
                     }
-                    Column {
+                    Column(horizontalAlignment = Alignment.End) {
                         //Bouton des settings
                         var compteurDeClicks = 0
                         FloatingActionButton(modifier = Modifier
                             .background(color = Color.Blue)
                             .size(size = 56.dp)
                             .padding(all = 16.dp), onClick = {
-                            if (compteurDeClicks == NOMBRE_DE_CLICKS_POUR_SETTINGS) {
-                                val intentSettings = Intent(this@MainActivity, MainActivity::class.java)
+                            if (compteurDeClicks >= NOMBRE_DE_CLICKS_POUR_SETTINGS) {
+                                val intentSettings = Intent(this@MainActivity, Settings::class.java)
                                 startActivity(this@MainActivity, intentSettings, null)
                             }
                             compteurDeClicks++
@@ -114,7 +101,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun btnTextApp(nomApp: String, nomPackage: String, pm: PackageManager, contexte: Context) {
+    fun BtnTextApp(nomApp: String, nomPackage: String, pm: PackageManager, contexte: Context) {
         Text(
             text = nomApp, color = Color.White, modifier = Modifier.clickable(
                 onClick = {
