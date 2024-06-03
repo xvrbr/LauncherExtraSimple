@@ -1,13 +1,13 @@
 package com.example.extrasimple
 
-import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.icu.text.SimpleDateFormat
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.Nullable
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -32,15 +32,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.example.extrasimple.bdd.AppLaunchable
+import com.example.extrasimple.bdd.AppLaunchableDao
+import com.example.extrasimple.bdd.DBHelper
 import com.example.extrasimple.ui.theme.ExtraSimpleTheme
-import java.time.Instant
-import java.util.Date
-import java.util.Locale
+import kotlinx.coroutines.flow.Flow
 
 class Settings : ComponentActivity() {
+
+    //Get les apps installees
+    val pm = packageManager
+    val listeApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+    val launchableApps = listeApps.filter { pm.getLaunchIntentForPackage(it.packageName) != null }
+
+    //Liste des apps a mettre dans la page de launcher
+    val db = DBHelper.getDatabase(context = this)
+    val appsALauncher = db.appLaunchableDao().getAllAppLaunchables()
+
+    //Liste des noms des packageName des apps
+    val listePackageName = appsALauncher.map {it.infoApp.packageName}
+
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,11 +66,11 @@ class Settings : ComponentActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        //Get les apps installees
-        val pm = packageManager
-        val listeApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-        val launchableApps = listeApps.filter { pm.getLaunchIntentForPackage(it.packageName) != null }
 
+
+
+
+        //UI
         setContent{
             ExtraSimpleTheme {
                 // A surface container using the 'background' color from the theme
@@ -64,6 +79,7 @@ class Settings : ComponentActivity() {
                     color = Color.Black
                 ){
                     Row {
+                        //Liste des apps
                         Column {
                             Spacer(modifier = Modifier.padding(top = 50.dp))
 
@@ -71,14 +87,14 @@ class Settings : ComponentActivity() {
                                 items(items = launchableApps) { application ->
                                     val packageInfo = pm.getPackageInfo(application.packageName, 0)
                                     ElementCheckList(
-                                        nomApp = packageInfo.applicationInfo.loadLabel(pm).toString(),
-                                        checked = false
+                                        app = packageInfo.applicationInfo
                                     )
                                 }
                             }
 
                         }
                     }
+                    //Bouton de retour
                     Column(horizontalAlignment = Alignment.End){
                         Spacer(modifier = Modifier.padding(top = 300.dp))
 
@@ -101,15 +117,21 @@ class Settings : ComponentActivity() {
     }
 
     @Composable
-    fun ElementCheckList(nomApp: String, checked : Boolean) {
+    fun ElementCheckList(app: ApplicationInfo, checked : Boolean ?= null) {
         Row{
-            Checkbox(checked = false,
+            Checkbox(
+                checked = (app.packageName in listePackageName),
                 modifier = Modifier.padding(bottom = 10.dp),
-                onCheckedChange = {
+                onCheckedChange = { isChecked ->
                 //Rajouter ou enlever l'app de la liste
+                    if (isChecked) {
+                        db.appLaunchableDao().insertAppLaunchable(AppLaunchable(app))
+                    } else {
+                        db.appLaunchableDao().deleteAppLaunchable(AppLaunchable(app))
+                    }
             })
 
-            Text(text = nomApp, color = Color.White, fontSize = 20.sp, modifier = Modifier.padding(top = 10.dp))
+            Text(text = app.name, color = Color.White, fontSize = 20.sp, modifier = Modifier.padding(top = 10.dp))
         }
     }
 

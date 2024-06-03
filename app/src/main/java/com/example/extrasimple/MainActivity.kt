@@ -12,8 +12,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.FloatingActionButton
@@ -24,10 +22,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
+import androidx.room.Room
+import com.example.extrasimple.bdd.DBHelper
+import com.example.extrasimple.bdd.RoomDB
 import com.example.extrasimple.ui.theme.ExtraSimpleTheme
 import java.time.Instant
 import java.util.Date
@@ -41,6 +41,13 @@ class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        //Gestion de la base de données
+        val db = DBHelper.getDatabase(context = this)
+
+        val appLaunchableDao = db.appLaunchableDao()
+
+        //UI pis toute pis toute
         setContent {
             ExtraSimpleTheme {
                 // A surface container using the 'background' color from the theme
