@@ -1,5 +1,7 @@
 package com.example.extrasimple
 
+import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.icu.text.SimpleDateFormat
@@ -10,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -72,7 +75,9 @@ class Settings : ComponentActivity() {
                                     val packageInfo = pm.getPackageInfo(application.packageName, 0)
                                     ElementCheckList(
                                         nomApp = packageInfo.applicationInfo.loadLabel(pm).toString(),
-                                        checked = false
+                                        nomPackage = application.packageName,
+                                        pm = pm,
+                                        contexte = this@Settings
                                     )
                                 }
                             }
@@ -101,15 +106,43 @@ class Settings : ComponentActivity() {
     }
 
     @Composable
-    fun ElementCheckList(nomApp: String, checked : Boolean) {
+    fun ElementCheckList(nomApp: String, nomPackage: String, pm: PackageManager, contexte: Context) {
         Row{
-            Checkbox(checked = false,
+            //Verifier si l'app est deja dans la liste
+            var db = AppsBD(contexte).readableDatabase
+            val selectApp = db.query("apps", arrayOf("nom_app", "package_name"),
+                "nom_app = ? and package_name = ?",
+                arrayOf(nomApp, nomPackage), null, null, null)
+
+            var isChecked = selectApp.count > 0
+
+            Checkbox(checked = isChecked,
                 modifier = Modifier.padding(bottom = 10.dp),
                 onCheckedChange = {
-                //Rajouter ou enlever l'app de la liste
-            })
+                    val checked = selectApp.count == 0
+                    check(checked)
+                    //Rajouter ou enlever l'app de la liste
+                    if(!isChecked){
+                        val dbInsert = AppsBD(contexte).writableDatabase
+                        dbInsert.insert("apps", null, ContentValues().apply {
+                            put("nom_app", nomApp)
+                            put("package_name", nomPackage)
+                        })
+                        isChecked = true
+                    }else{
+                        val dbDelete = AppsBD(contexte).writableDatabase
+                        dbDelete.delete("apps", "package_name = ?", arrayOf(nomPackage))
+                        isChecked = false
+                    }
+                    selectApp.close()
+                }
+            )
 
-            Text(text = nomApp, color = Color.White, fontSize = 20.sp, modifier = Modifier.padding(top = 10.dp))
+            Text(text = nomApp,
+                color = Color.White,
+                fontSize = 20.sp,
+                modifier = Modifier.padding(top = 10.dp)
+            )
         }
     }
 
