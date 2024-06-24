@@ -11,12 +11,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.FloatingActionButton
@@ -24,6 +26,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,14 +54,20 @@ class MainActivity : ComponentActivity() {
 
         //Obtenir la liste des applications enregistrees
         val db = AppsBD(this).readableDatabase
-        val curseur = db.query("apps", arrayOf("nom_app", "package_name"), null, null, null, null, null)
-
-        var listeApps: MutableList<MutableList<String>> = mutableListOf()
+        val curseur = db.query("apps", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
+        var listeApps: MutableList<App> = mutableListOf()
 
         while(curseur.moveToNext()){
-            listeApps.add(mutableListOf(curseur.getString(0), curseur.getString(1)))
+            listeApps.add(App(
+                curseur.getInt(0), //id
+                curseur.getString(1), //nomApp
+                curseur.getString(2)) //nomPackage
+            )
         }
         curseur.close()
+
+        val modele: AppsModel by viewModels()
+        modele.updateApps(listeApps)
 
         setContent {
             ExtraSimpleTheme {
@@ -73,20 +86,8 @@ class MainActivity : ComponentActivity() {
                                 .format(Date.from(currentTime))
                             Text(text = formattedTime, color = Color.White, fontSize = 30.sp)
 
-                            LazyColumn {
-                                val pm = packageManager
-                                items(items = listeApps) { application ->
-                                    BtnTextApp(
-                                        nomApp = application[0],
-                                        nomPackage = application[1],
-                                        pm = pm,
-                                        contexte = this@MainActivity,
-                                        listeApps = listeApps
-
-                                    )
-                                }
-                            }
-
+                            //Ajoute les boutons des apps
+                            ListeApps()
                         }
                     }
                     Column(horizontalAlignment = Alignment.End) {
@@ -117,40 +118,58 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume(){
+        super.onResume()
+
+        refreshAppList()
+    }
+    private fun refreshAppList() {
+        val db = AppsBD(this).readableDatabase
+        val cursor = db.query("apps", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
+        val updatedList: MutableList<App> = mutableListOf()
+
+        while (cursor.moveToNext()) {
+            updatedList.add(
+                App(
+                    cursor.getInt(0), //id
+                    cursor.getString(1), //nomApp
+                    cursor.getString(2) //nomPackage
+                )
+            )
+        }
+        cursor.close()
+        val viewModel: AppsModel by viewModels()
+        viewModel.updateApps(updatedList)
+    }
     @Composable
-    fun BtnTextApp(nomApp: String, nomPackage: String, pm: PackageManager, contexte: Context, listeApps: MutableList<MutableList<String>>) {
+    fun BtnTextApp(nomApp: String, nomPackage: String, pm: PackageManager) {
         Text(
             text = nomApp, color = Color.White, modifier = Modifier.clickable(
                 onClick = {
+                    //Ouvre l'application selectionnee
                     val launchIntent = pm.getLaunchIntentForPackage(nomPackage)
-
-                    if (launchIntent != null) {
-                        startActivity(contexte, launchIntent, null)
-
-                        val startForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
-                            result: ActivityResult ->
-                                LoaderListeApps(listeApps)
-                        }
-                        startForResult.launch(launchIntent)
-                    }
+                    startActivity(launchIntent)
                 }
             )
         )
 
     }
     @Composable
-    fun LoaderListeApps(listeApps: MutableList<MutableList<String>>){
+    fun ListeApps(){
+        val pm = packageManager
+        val modele: AppsModel by viewModels()
+        val listeApps by modele.listeApps.observeAsState(emptyList())
+
         LazyColumn {
-            val pm = packageManager
-            items(items = listeApps) { application ->
+            items(items = listeApps, key={ application -> application.id}) { application ->
                 BtnTextApp(
-                    nomApp = application[0],
-                    nomPackage = application[1],
-                    pm = pm,
-                    contexte = this@MainActivity,
-                    listeApps = listeApps
+                    nomApp = application.nomApp,
+                    nomPackage = application.nomPackage,
+                    pm = pm
                 )
             }
         }
     }
+
+
 }

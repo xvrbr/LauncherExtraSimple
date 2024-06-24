@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 class AppsBD(contexte: Context) :
     SQLiteOpenHelper(contexte, "AppsBD", null, VERSION_BD) {
         companion object {
-        const val VERSION_BD = 2
+        const val VERSION_BD = 3
     }
 
 
@@ -15,8 +15,9 @@ class AppsBD(contexte: Context) :
     override fun onCreate(db: SQLiteDatabase?) {
         val requeteCreerTable =
             "CREATE TABLE apps(" +
-                    "nom_app TEXT PRIMARY KEY NOT NULL," +
-                    " package_name TEXT NOT NULL)".trimIndent()
+                    "id_app INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL," +
+                    "nom_app TEXT NOT NULL," +
+                    "package_name TEXT NOT NULL)".trimIndent()
 
         db?.execSQL(requeteCreerTable)
     }

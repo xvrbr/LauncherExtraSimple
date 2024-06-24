@@ -10,6 +10,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +31,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +44,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.extrasimple.ui.theme.ExtraSimpleTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import java.time.Instant
 import java.util.Date
 import java.util.Locale
@@ -54,7 +62,9 @@ class Settings : ComponentActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+
         //Get les apps installees
+/////////////////////////////        //FAIRE CECI SUR UN AUTRE THREAD
         val pm = packageManager
         val listeApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
         val launchableApps = listeApps.filter { pm.getLaunchIntentForPackage(it.packageName) != null }
@@ -92,7 +102,24 @@ class Settings : ComponentActivity() {
                             .height(100.dp)
                             .size(size = 56.dp),
                             onClick = {
-                            finish()
+                                //Update la liste des applications pour MainActivity
+                                val db = AppsBD(this@Settings).readableDatabase
+                                val curseur = db.query("apps", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
+
+                                var listeAppsUpdatee: MutableList<App> = mutableListOf()
+                                while(curseur.moveToNext()){
+                                    listeAppsUpdatee.add(App(
+                                        curseur.getInt(0),
+                                        curseur.getString(1),
+                                        curseur.getString(2))
+                                    )
+                                }
+                                curseur.close()
+                                val modele: AppsModel by viewModels()
+                                modele.updateApps(listeAppsUpdatee)
+
+                                //On retourne a la MainActivity
+                                finish()
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.ArrowBack,
@@ -114,25 +141,24 @@ class Settings : ComponentActivity() {
                 "nom_app = ? and package_name = ?",
                 arrayOf(nomApp, nomPackage), null, null, null)
 
-            var isChecked = selectApp.count > 0
+            var isChecked by remember { mutableStateOf(selectApp.count > 0) }
 
-            Checkbox(checked = isChecked,
+            Checkbox(
+                checked = isChecked,
                 modifier = Modifier.padding(bottom = 10.dp),
-                onCheckedChange = {
-                    val checked = selectApp.count == 0
-                    check(checked)
+                onCheckedChange = { newCheckedChange ->
+                    isChecked = newCheckedChange
+
                     //Rajouter ou enlever l'app de la liste
-                    if(!isChecked){
+                    if(isChecked){
                         val dbInsert = AppsBD(contexte).writableDatabase
                         dbInsert.insert("apps", null, ContentValues().apply {
                             put("nom_app", nomApp)
                             put("package_name", nomPackage)
                         })
-                        isChecked = true
                     }else{
                         val dbDelete = AppsBD(contexte).writableDatabase
                         dbDelete.delete("apps", "package_name = ?", arrayOf(nomPackage))
-                        isChecked = false
                     }
                     selectApp.close()
                 }
@@ -145,5 +171,4 @@ class Settings : ComponentActivity() {
             )
         }
     }
-
 }
