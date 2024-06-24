@@ -1,5 +1,6 @@
 package com.example.extrasimple
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,10 +9,16 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.FloatingActionButton
@@ -19,15 +26,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
-import androidx.room.Room
-import com.example.extrasimple.bdd.DBHelper
-import com.example.extrasimple.bdd.RoomDB
 import com.example.extrasimple.ui.theme.ExtraSimpleTheme
 import java.time.Instant
 import java.util.Date
@@ -42,13 +52,23 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        //Obtenir la liste des applications enregistrees
+        val db = AppsBD(this).readableDatabase
+        val curseur = db.query("apps", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
+        var listeApps: MutableList<App> = mutableListOf()
 
-        //Gestion de la base de données
-        val db = DBHelper.getDatabase(context = this)
+        while(curseur.moveToNext()){
+            listeApps.add(App(
+                curseur.getInt(0), //id
+                curseur.getString(1), //nomApp
+                curseur.getString(2)) //nomPackage
+            )
+        }
+        curseur.close()
 
-        val appLaunchableDao = db.appLaunchableDao()
+        val modele: AppsModel by viewModels()
+        modele.updateApps(listeApps)
 
-        //UI pis toute pis toute
         setContent {
             ExtraSimpleTheme {
                 // A surface container using the 'background' color from the theme
@@ -65,19 +85,9 @@ class MainActivity : ComponentActivity() {
                             val formattedTime = SimpleDateFormat("hh:mm", Locale.getDefault())
                                 .format(Date.from(currentTime))
                             Text(text = formattedTime, color = Color.White, fontSize = 30.sp)
-                            /*
-                            LazyColumn {
-                                items(items = launchableApps) { application ->
-                                    val packageInfo = pm.getPackageInfo(application.packageName, 0)
-                                    BtnTextApp(
-                                        nomApp = packageInfo.applicationInfo.loadLabel(pm).toString(),
-                                        nomPackage = application.packageName,
-                                        pm = pm,
-                                        contexte = this@MainActivity
-                                    )
-                                }
-                            }*/
 
+                            //Ajoute les boutons des apps
+                            ListeApps()
                         }
                     }
                     Column(horizontalAlignment = Alignment.End) {
@@ -108,19 +118,58 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume(){
+        super.onResume()
+
+        refreshAppList()
+    }
+    private fun refreshAppList() {
+        val db = AppsBD(this).readableDatabase
+        val cursor = db.query("apps", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
+        val updatedList: MutableList<App> = mutableListOf()
+
+        while (cursor.moveToNext()) {
+            updatedList.add(
+                App(
+                    cursor.getInt(0), //id
+                    cursor.getString(1), //nomApp
+                    cursor.getString(2) //nomPackage
+                )
+            )
+        }
+        cursor.close()
+        val viewModel: AppsModel by viewModels()
+        viewModel.updateApps(updatedList)
+    }
     @Composable
-    fun BtnTextApp(nomApp: String, nomPackage: String, pm: PackageManager, contexte: Context) {
+    fun BtnTextApp(nomApp: String, nomPackage: String, pm: PackageManager) {
         Text(
             text = nomApp, color = Color.White, modifier = Modifier.clickable(
                 onClick = {
+                    //Ouvre l'application selectionnee
                     val launchIntent = pm.getLaunchIntentForPackage(nomPackage)
-
-                    if (launchIntent != null) {
-                        startActivity(contexte, launchIntent, null)
-                    }
+                    startActivity(launchIntent)
                 }
             )
         )
 
     }
+    @Composable
+    fun ListeApps(){
+        val pm = packageManager
+        val modele: AppsModel by viewModels()
+        val listeApps by modele.listeApps.observeAsState(emptyList())
+
+        LazyColumn {
+            items(items = listeApps, key={ application -> application.id}) { application ->
+                BtnTextApp(
+                    nomApp = application.nomApp,
+                    nomPackage = application.nomPackage,
+                    pm = pm
+                )
+            }
+        }
+    }
+
+
 }
