@@ -2,9 +2,7 @@ package com.example.extrasimple
 
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.icu.text.SimpleDateFormat
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,13 +10,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,18 +37,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.extrasimple.ui.theme.ExtraSimpleTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import java.time.Instant
-import java.util.Date
-import java.util.Locale
 
 class Settings : ComponentActivity() {
+
+    //Viewmodel des apps
+    private val appListViewModel: ListeAppViewModel by viewModels()
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,11 +57,6 @@ class Settings : ComponentActivity() {
             insets
         }
 
-        //Get les apps installees
-/////////////////////////////        //FAIRE CECI SUR UN AUTRE THREAD
-        val pm = packageManager
-        val listeApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-        val launchableApps = listeApps.filter { pm.getLaunchIntentForPackage(it.packageName) != null }
 
         setContent{
             ExtraSimpleTheme {
@@ -80,27 +69,14 @@ class Settings : ComponentActivity() {
                         Column {
                             Spacer(modifier = Modifier.padding(top = 50.dp))
 
-                            LazyColumn {
-                                items(items = launchableApps) { application ->
-                                    val packageInfo = pm.getPackageInfo(application.packageName, 0)
-                                    ElementCheckList(
-                                        nomApp = packageInfo.applicationInfo.loadLabel(pm).toString(),
-                                        nomPackage = application.packageName,
-                                        pm = pm,
-                                        contexte = this@Settings
-                                    )
-                                }
-                            }
-
+                            ListeDesApps(appListViewModel)
                         }
                     }
-                    Column(horizontalAlignment = Alignment.End){
+                    Column(verticalArrangement = Arrangement.Top, horizontalAlignment = Alignment.End){
                         Spacer(modifier = Modifier.padding(top = 300.dp))
 
                         FloatingActionButton(modifier = Modifier
-                            .background(color = Color.Blue)
-                            .height(100.dp)
-                            .size(size = 56.dp),
+                            .size(size = 30.dp),
                             onClick = {
                                 //Update la liste des applications pour MainActivity
                                 val db = AppsBD(this@Settings).readableDatabase
@@ -136,7 +112,7 @@ class Settings : ComponentActivity() {
     fun ElementCheckList(nomApp: String, nomPackage: String, pm: PackageManager, contexte: Context) {
         Row{
             //Verifier si l'app est deja dans la liste
-            var db = AppsBD(contexte).readableDatabase
+            val db = AppsBD(contexte).readableDatabase
             val selectApp = db.query("apps", arrayOf("nom_app", "package_name"),
                 "nom_app = ? and package_name = ?",
                 arrayOf(nomApp, nomPackage), null, null, null)
@@ -169,6 +145,25 @@ class Settings : ComponentActivity() {
                 fontSize = 20.sp,
                 modifier = Modifier.padding(top = 10.dp)
             )
+        }
+    }
+
+    @Composable
+    fun ListeDesApps(appListViewModel: ListeAppViewModel){
+
+        val launchableApps by appListViewModel.listeDesApps.observeAsState(emptyList())
+        val pm = packageManager
+
+        LazyColumn {
+            items(items = launchableApps) { application ->
+                val packageInfo = pm.getPackageInfo(application.packageName, 0)
+                ElementCheckList(
+                    nomApp = packageInfo.applicationInfo.loadLabel(pm).toString(),
+                    nomPackage = application.packageName,
+                    pm = pm,
+                    contexte = this@Settings
+                )
+            }
         }
     }
 }
