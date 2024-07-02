@@ -34,10 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
 import com.example.extrasimple.ui.theme.ExtraSimpleTheme
 
-class MainActivity : ComponentActivity() {
 
-    //Constantes
-    private val NOMBRE_DE_CLICKS_MAX_POUR_SETTINGS = 50
+class MainActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,30 +64,27 @@ class MainActivity : ComponentActivity() {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Black
-                )
-                {
-
+                ) {
                     Row {
-                        Column(Modifier.padding(start = 15.dp).padding(top= 30.dp)){
+                        Column(
+                            Modifier
+                                .padding(start = 15.dp)
+                                .padding(top = 30.dp)
+                        ) {
                             //Ajoute les boutons des apps
                             ListeApps()
                         }
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        //Bouton des settings
-                        var compteurDeClicks = 0
-                        var rangeRandom = 1..NOMBRE_DE_CLICKS_MAX_POUR_SETTINGS
+
 
                         FloatingActionButton(modifier = Modifier
                             .size(size = 56.dp)
                             .padding(all = 16.dp), onClick = {
-                            if (compteurDeClicks >= rangeRandom.random()) {
                                 val intentSettings = Intent(this@MainActivity, Settings::class.java)
                                 startActivity(this@MainActivity, intentSettings, null)
                             }
-                            compteurDeClicks++
-                        }) {
-
+                        ) {
                             Icon(
                                 imageVector = Icons.Outlined.Settings,
                                 tint = Color.White,
@@ -130,13 +125,15 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun BtnTextApp(nomApp: String, nomPackage: String, pm: PackageManager) {
         Text(
-            text = nomApp.lowercase(), fontSize = 20.sp, color = Color.White, letterSpacing = 3.sp, modifier = Modifier.height(40.dp).clickable(
-                onClick = {
-                    //Ouvre l'application selectionnee
-                    val launchIntent = pm.getLaunchIntentForPackage(nomPackage)
-                    startActivity(launchIntent)
-                }
-            )
+            text = nomApp.lowercase(), fontSize = 20.sp, color = Color.White, letterSpacing = 3.sp, modifier = Modifier
+                .height(40.dp)
+                .clickable(
+                    onClick = {
+                        //Ouvre l'application selectionnee
+                        val launchIntent = pm.getLaunchIntentForPackage(nomPackage)
+                        startActivity(launchIntent)
+                    }
+                )
         )
     }
     @Composable

@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,6 +46,9 @@ class Settings : ComponentActivity() {
 
     //Viewmodel des apps
     private val appListViewModel: ListeAppViewModel by viewModels()
+
+    private val appsMaudites = arrayOf("Reddit", "YouTube")
+    private var compteurMaudits = 0
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -119,32 +123,47 @@ class Settings : ComponentActivity() {
 
             var isChecked by remember { mutableStateOf(selectApp.count > 0) }
 
-            Checkbox(
-                checked = isChecked,
-                modifier = Modifier.padding(bottom = 10.dp),
-                onCheckedChange = { newCheckedChange ->
-                    isChecked = newCheckedChange
+            if(nomApp !in appsMaudites){
+                Checkbox(
+                    checked = isChecked,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                    onCheckedChange = { newCheckedChange ->
+                        isChecked = newCheckedChange
 
-                    //Rajouter ou enlever l'app de la liste
-                    if(isChecked){
-                        val dbInsert = AppsBD(contexte).writableDatabase
-                        dbInsert.insert("apps", null, ContentValues().apply {
-                            put("nom_app", nomApp)
-                            put("package_name", nomPackage)
-                        })
-                    }else{
-                        val dbDelete = AppsBD(contexte).writableDatabase
-                        dbDelete.delete("apps", "package_name = ?", arrayOf(nomPackage))
+                        //Rajouter ou enlever l'app de la liste
+                        if(isChecked){
+                            val dbInsert = AppsBD(contexte).writableDatabase
+                            dbInsert.insert("apps", null, ContentValues().apply {
+                                put("nom_app", nomApp)
+                                put("package_name", nomPackage)
+                            })
+                        }else{
+                            val dbDelete = AppsBD(contexte).writableDatabase
+                            dbDelete.delete("apps", "package_name = ?", arrayOf(nomPackage))
+                        }
+                        selectApp.close()
                     }
-                    selectApp.close()
-                }
-            )
+                )
+            }else{
+                Spacer(modifier = Modifier.padding(start = 49.dp, bottom = 50.dp))
+            }
 
             Text(text = nomApp,
                 color = Color.White,
                 fontSize = 20.sp,
                 modifier = Modifier.padding(top = 10.dp)
+                    .clickable(onClick = {
+                        if(nomApp !in appsMaudites || compteurMaudits >= 50){
+                            //Ouvre l'application selectionnee
+                            val launchIntent = pm.getLaunchIntentForPackage(nomPackage)
+                            startActivity(launchIntent)
+                            finish()
+                        }else{
+                            compteurMaudits++
+                        }
+                    })
             )
+
         }
     }
 
