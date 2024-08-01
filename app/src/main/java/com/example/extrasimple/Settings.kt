@@ -1,10 +1,13 @@
 package com.example.extrasimple
 
 import android.content.ContentValues
+<<<<<<< Updated upstream
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.icu.text.SimpleDateFormat
+=======
+>>>>>>> Stashed changes
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -25,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -63,12 +67,15 @@ class Settings : ComponentActivity() {
             insets
         }
 
+<<<<<<< Updated upstream
         //Get les apps installees
 /////////////////////////////        //FAIRE CECI SUR UN AUTRE THREAD
         val pm = packageManager
         val listeApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
         val launchableApps = listeApps.filter { pm.getLaunchIntentForPackage(it.packageName) != null }
 
+=======
+>>>>>>> Stashed changes
         setContent{
             ExtraSimpleTheme {
                 // A surface container using the 'background' color from the theme
@@ -97,6 +104,7 @@ class Settings : ComponentActivity() {
                     Column(horizontalAlignment = Alignment.End){
                         Spacer(modifier = Modifier.padding(top = 300.dp))
 
+                        //bouton retour
                         FloatingActionButton(modifier = Modifier
                             .background(color = Color.Blue)
                             .height(100.dp)
@@ -126,6 +134,18 @@ class Settings : ComponentActivity() {
                                 contentDescription = "Back"
                             )
                         }
+
+                        //Bouton refresh
+                        FloatingActionButton(modifier = Modifier
+                            .size(size = 30.dp),
+                            onClick = {
+                                // TODO: Refresh la liste des apps dans la bd et que ce soit affiche
+                            }) {
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = "Back"
+                            )
+                        }
                     }
                 }
             }
@@ -133,10 +153,14 @@ class Settings : ComponentActivity() {
     }
 
     @Composable
-    fun ElementCheckList(nomApp: String, nomPackage: String, pm: PackageManager, contexte: Context) {
+    fun ElementCheckList(nomApp: String, nomPackage: String) {
         Row{
             //Verifier si l'app est deja dans la liste
+<<<<<<< Updated upstream
             var db = AppsBD(contexte).readableDatabase
+=======
+            val db = AppsBD(this@Settings).readableDatabase
+>>>>>>> Stashed changes
             val selectApp = db.query("apps", arrayOf("nom_app", "package_name"),
                 "nom_app = ? and package_name = ?",
                 arrayOf(nomApp, nomPackage), null, null, null)
@@ -149,6 +173,7 @@ class Settings : ComponentActivity() {
                 onCheckedChange = { newCheckedChange ->
                     isChecked = newCheckedChange
 
+<<<<<<< Updated upstream
                     //Rajouter ou enlever l'app de la liste
                     if(isChecked){
                         val dbInsert = AppsBD(contexte).writableDatabase
@@ -159,6 +184,20 @@ class Settings : ComponentActivity() {
                     }else{
                         val dbDelete = AppsBD(contexte).writableDatabase
                         dbDelete.delete("apps", "package_name = ?", arrayOf(nomPackage))
+=======
+                        //Rajouter ou enlever l'app de la liste
+                        if(isChecked){
+                            val dbInsert = AppsBD(this@Settings).writableDatabase
+                            dbInsert.insert("apps", null, ContentValues().apply {
+                                put("nom_app", nomApp)
+                                put("package_name", nomPackage)
+                            })
+                        }else{
+                            val dbDelete = AppsBD(this@Settings).writableDatabase
+                            dbDelete.delete("apps", "package_name = ?", arrayOf(nomPackage))
+                        }
+                        selectApp.close()
+>>>>>>> Stashed changes
                     }
                     selectApp.close()
                 }
@@ -167,8 +206,41 @@ class Settings : ComponentActivity() {
             Text(text = nomApp,
                 color = Color.White,
                 fontSize = 20.sp,
+<<<<<<< Updated upstream
                 modifier = Modifier.padding(top = 10.dp)
             )
+=======
+                modifier = Modifier
+                    .padding(top = 10.dp)
+                    .clickable(onClick = {
+                        if (nomApp !in appsMaudites || compteurMaudits >= 50) {
+                            //Ouvre l'application selectionnee
+                            val pm = this@Settings.packageManager
+                            val launchIntent = pm.getLaunchIntentForPackage(nomPackage)
+                            startActivity(launchIntent)
+                            finish()
+                        } else {
+                            compteurMaudits++
+                        }
+                    })
+            )
+
+        }
+    }
+
+    @Composable
+    fun ListeDesApps(appListViewModel: ListeAppViewModel){
+
+        val launchableApps by appListViewModel.listeDesApps.observeAsState(emptyList())
+
+        LazyColumn {
+            items(items = launchableApps) { application ->
+                ElementCheckList(
+                    nomApp = application.nomApp,
+                    nomPackage = application.nomPackage
+                )
+            }
+>>>>>>> Stashed changes
         }
     }
 }
