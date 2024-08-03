@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -40,7 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.viewModelScope
 import com.example.extrasimple.ui.theme.ExtraSimpleTheme
+import kotlinx.coroutines.launch
 
 class Settings : ComponentActivity() {
 
@@ -79,6 +82,7 @@ class Settings : ComponentActivity() {
                     Column(verticalArrangement = Arrangement.Top, horizontalAlignment = Alignment.End){
                         Spacer(modifier = Modifier.padding(top = 300.dp))
 
+                        //Bouton retour
                         FloatingActionButton(modifier = Modifier
                             .size(size = 30.dp),
                             onClick = {
@@ -106,6 +110,20 @@ class Settings : ComponentActivity() {
                                 contentDescription = "Back"
                             )
                         }
+
+                        //Bouton refresh
+                        FloatingActionButton(modifier = Modifier
+                            .size(size = 30.dp),
+                            onClick = {
+                                appListViewModel.viewModelScope.launch {
+                                    appListViewModel.resfreshLaunchableApps()
+                                }
+                            }){
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = "Refresh"
+                            )
+                        }
                     }
                 }
             }
@@ -117,7 +135,7 @@ class Settings : ComponentActivity() {
         Row{
             //Verifier si l'app est deja dans la liste
             val db = AppsBD(contexte).readableDatabase
-            val selectApp = db.query("apps", arrayOf("nom_app", "package_name"),
+            val selectApp = db.query("apps_accueil", arrayOf("nom_app", "package_name"),
                 "nom_app = ? and package_name = ?",
                 arrayOf(nomApp, nomPackage), null, null, null)
 
@@ -133,13 +151,13 @@ class Settings : ComponentActivity() {
                         //Rajouter ou enlever l'app de la liste
                         if(isChecked){
                             val dbInsert = AppsBD(contexte).writableDatabase
-                            dbInsert.insert("apps", null, ContentValues().apply {
+                            dbInsert.insert("apps_accueil", null, ContentValues().apply {
                                 put("nom_app", nomApp)
                                 put("package_name", nomPackage)
                             })
                         }else{
                             val dbDelete = AppsBD(contexte).writableDatabase
-                            dbDelete.delete("apps", "package_name = ?", arrayOf(nomPackage))
+                            dbDelete.delete("apps_accueil", "package_name = ?", arrayOf(nomPackage))
                         }
                         selectApp.close()
                     }
@@ -175,10 +193,9 @@ class Settings : ComponentActivity() {
 
         LazyColumn {
             items(items = launchableApps) { application ->
-                val packageInfo = pm.getPackageInfo(application.packageName, 0)
                 ElementCheckList(
-                    nomApp = packageInfo.applicationInfo.loadLabel(pm).toString(),
-                    nomPackage = application.packageName,
+                    nomApp = application.nomApp,
+                    nomPackage = application.nomPackage,
                     pm = pm,
                     contexte = this@Settings
                 )

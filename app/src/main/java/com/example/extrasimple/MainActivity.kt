@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
         //Obtenir la liste des applications enregistrees
         val db = AppsBD(this).readableDatabase
-        val curseur = db.query("apps", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
+        val curseur = db.query("apps_accueil", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, "nom_app")
         var listeApps: MutableList<App> = mutableListOf()
 
         while(curseur.moveToNext()){
@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
     }
     private fun refreshAppList() {
         val db = AppsBD(this).readableDatabase
-        val cursor = db.query("apps", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
+        val cursor = db.query("apps_accueil", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, "nom_app")
         val updatedList: MutableList<App> = mutableListOf()
 
         while (cursor.moveToNext()) {
