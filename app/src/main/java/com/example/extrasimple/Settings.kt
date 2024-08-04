@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -79,16 +80,14 @@ class Settings : ComponentActivity() {
                             ListeDesApps(appListViewModel)
                         }
                     }
-                    Column(verticalArrangement = Arrangement.Top, horizontalAlignment = Alignment.End){
-                        Spacer(modifier = Modifier.padding(top = 300.dp))
-
+                    Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.End){
                         //Bouton retour
                         FloatingActionButton(modifier = Modifier
-                            .size(size = 30.dp),
+                            .size(size = 40.dp),
                             onClick = {
                                 //Update la liste des applications pour MainActivity
                                 val db = AppsBD(this@Settings).readableDatabase
-                                val curseur = db.query("apps", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
+                                val curseur = db.query("apps_accueil", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
 
                                 var listeAppsUpdatee: MutableList<App> = mutableListOf()
                                 while(curseur.moveToNext()){
@@ -113,7 +112,7 @@ class Settings : ComponentActivity() {
 
                         //Bouton refresh
                         FloatingActionButton(modifier = Modifier
-                            .size(size = 30.dp),
+                            .size(size = 40.dp).offset(y=40.dp),
                             onClick = {
                                 appListViewModel.viewModelScope.launch {
                                     appListViewModel.resfreshLaunchableApps()

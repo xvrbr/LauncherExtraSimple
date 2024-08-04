@@ -2,6 +2,7 @@ package com.example.extrasimple
 
 import android.app.Application
 import android.content.ContentValues
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
@@ -29,20 +30,28 @@ class ListeAppViewModel(application: Application) : AndroidViewModel(application
         //On cherche toutes les applications
         val pm = getApplication<Application>().packageManager
         val listeApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-        listeApps.filter { pm.getLaunchIntentForPackage(it.packageName) != null }
+            .filter { pm.getLaunchIntentForPackage(it.packageName) != null &&
+                    it.flags.and(ApplicationInfo.FLAG_SYSTEM) != ApplicationInfo.FLAG_SYSTEM
+            }
             .sortedBy { it.loadLabel(pm).toString() }
 
         //On update les apps dans la base de donnees
         val db = AppsBD(getApplication()).writableDatabase
 
-        db.delete("apps_settings", null, null)
+        try{
+            db.beginTransaction()
+            db.delete("apps_settings", null, null)
 
-        listeApps.forEach { app ->
-            val values = ContentValues().apply {
-                put("nom_app", app.loadLabel(pm).toString())
-                put("package_name", app.packageName)
+            listeApps.forEach { app ->
+                val values = ContentValues().apply {
+                    put("nom_app", app.loadLabel(pm).toString())
+                    put("package_name", app.packageName)
+                }
+                db.insert("apps_settings", null, values)
             }
-            db.insert("apps_settings", null, values)
+            db.setTransactionSuccessful()
+        }finally{
+            db.endTransaction()
         }
         db.close()
 

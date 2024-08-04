@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -69,7 +70,7 @@ class MainActivity : ComponentActivity() {
                         Column(
                             Modifier
                                 .padding(start = 15.dp)
-                                .padding(top = 30.dp)
+                                .padding(top = 45.dp)
                         ) {
                             //Ajoute les boutons des apps
                             ListeApps()
@@ -80,7 +81,8 @@ class MainActivity : ComponentActivity() {
 
                         FloatingActionButton(modifier = Modifier
                             .size(size = 56.dp)
-                            .padding(all = 16.dp), onClick = {
+                            .padding(all = 16.dp)
+                            .offset(y = 25.dp), onClick = {
                                 val intentSettings = Intent(this@MainActivity, Settings::class.java)
                                 startActivity(this@MainActivity, intentSettings, null)
                             }
