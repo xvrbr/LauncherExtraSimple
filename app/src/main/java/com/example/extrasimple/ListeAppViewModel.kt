@@ -2,7 +2,6 @@ package com.example.extrasimple
 
 import android.app.Application
 import android.content.ContentValues
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
@@ -30,9 +29,7 @@ class ListeAppViewModel(application: Application) : AndroidViewModel(application
         //On cherche toutes les applications
         val pm = getApplication<Application>().packageManager
         val listeApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { pm.getLaunchIntentForPackage(it.packageName) != null &&
-                    it.flags.and(ApplicationInfo.FLAG_SYSTEM) != ApplicationInfo.FLAG_SYSTEM
-            }
+            .filter { pm.getLaunchIntentForPackage(it.packageName) != null }
             .sortedBy { it.loadLabel(pm).toString() }
 
         //On update les apps dans la base de donnees
