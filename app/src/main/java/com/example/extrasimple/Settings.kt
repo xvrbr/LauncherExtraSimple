@@ -2,9 +2,7 @@ package com.example.extrasimple
 
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.icu.text.SimpleDateFormat
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,19 +10,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -32,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,18 +40,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.viewModelScope
 import com.example.extrasimple.ui.theme.ExtraSimpleTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import java.time.Instant
-import java.util.Date
-import java.util.Locale
+import kotlinx.coroutines.launch
 
 class Settings : ComponentActivity() {
+
+    //Viewmodel des apps
+    private val appListViewModel: ListeAppViewModel by viewModels()
+
+    private val appsMaudites = arrayOf("Reddit", "YouTube")
+    private var compteurMaudits = 0
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,11 +65,6 @@ class Settings : ComponentActivity() {
             insets
         }
 
-        //Get les apps installees
-/////////////////////////////        //FAIRE CECI SUR UN AUTRE THREAD
-        val pm = packageManager
-        val listeApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-        val launchableApps = listeApps.filter { pm.getLaunchIntentForPackage(it.packageName) != null }
 
         setContent{
             ExtraSimpleTheme {
@@ -80,31 +77,17 @@ class Settings : ComponentActivity() {
                         Column {
                             Spacer(modifier = Modifier.padding(top = 50.dp))
 
-                            LazyColumn {
-                                items(items = launchableApps) { application ->
-                                    val packageInfo = pm.getPackageInfo(application.packageName, 0)
-                                    ElementCheckList(
-                                        nomApp = packageInfo.applicationInfo.loadLabel(pm).toString(),
-                                        nomPackage = application.packageName,
-                                        pm = pm,
-                                        contexte = this@Settings
-                                    )
-                                }
-                            }
-
+                            ListeDesApps(appListViewModel)
                         }
                     }
-                    Column(horizontalAlignment = Alignment.End){
-                        Spacer(modifier = Modifier.padding(top = 300.dp))
-
+                    Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.End){
+                        //Bouton retour
                         FloatingActionButton(modifier = Modifier
-                            .background(color = Color.Blue)
-                            .height(100.dp)
-                            .size(size = 56.dp),
+                            .size(size = 40.dp),
                             onClick = {
                                 //Update la liste des applications pour MainActivity
                                 val db = AppsBD(this@Settings).readableDatabase
-                                val curseur = db.query("apps", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
+                                val curseur = db.query("apps_accueil", arrayOf("id_app", "nom_app", "package_name"), null, null, null, null, null)
 
                                 var listeAppsUpdatee: MutableList<App> = mutableListOf()
                                 while(curseur.moveToNext()){
@@ -126,6 +109,20 @@ class Settings : ComponentActivity() {
                                 contentDescription = "Back"
                             )
                         }
+
+                        //Bouton refresh
+                        FloatingActionButton(modifier = Modifier
+                            .size(size = 40.dp).offset(y=40.dp),
+                            onClick = {
+                                appListViewModel.viewModelScope.launch {
+                                    appListViewModel.resfreshLaunchableApps()
+                                }
+                            }){
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = "Refresh"
+                            )
+                        }
                     }
                 }
             }
@@ -136,39 +133,72 @@ class Settings : ComponentActivity() {
     fun ElementCheckList(nomApp: String, nomPackage: String, pm: PackageManager, contexte: Context) {
         Row{
             //Verifier si l'app est deja dans la liste
-            var db = AppsBD(contexte).readableDatabase
-            val selectApp = db.query("apps", arrayOf("nom_app", "package_name"),
+            val db = AppsBD(contexte).readableDatabase
+            val selectApp = db.query("apps_accueil", arrayOf("nom_app", "package_name"),
                 "nom_app = ? and package_name = ?",
                 arrayOf(nomApp, nomPackage), null, null, null)
 
             var isChecked by remember { mutableStateOf(selectApp.count > 0) }
 
-            Checkbox(
-                checked = isChecked,
-                modifier = Modifier.padding(bottom = 10.dp),
-                onCheckedChange = { newCheckedChange ->
-                    isChecked = newCheckedChange
+            if(nomApp !in appsMaudites){
+                Checkbox(
+                    checked = isChecked,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                    onCheckedChange = { newCheckedChange ->
+                        isChecked = newCheckedChange
 
-                    //Rajouter ou enlever l'app de la liste
-                    if(isChecked){
-                        val dbInsert = AppsBD(contexte).writableDatabase
-                        dbInsert.insert("apps", null, ContentValues().apply {
-                            put("nom_app", nomApp)
-                            put("package_name", nomPackage)
-                        })
-                    }else{
-                        val dbDelete = AppsBD(contexte).writableDatabase
-                        dbDelete.delete("apps", "package_name = ?", arrayOf(nomPackage))
+                        //Rajouter ou enlever l'app de la liste
+                        if(isChecked){
+                            val dbInsert = AppsBD(contexte).writableDatabase
+                            dbInsert.insert("apps_accueil", null, ContentValues().apply {
+                                put("nom_app", nomApp)
+                                put("package_name", nomPackage)
+                            })
+                        }else{
+                            val dbDelete = AppsBD(contexte).writableDatabase
+                            dbDelete.delete("apps_accueil", "package_name = ?", arrayOf(nomPackage))
+                        }
+                        selectApp.close()
                     }
-                    selectApp.close()
-                }
-            )
+                )
+            }else{
+                Spacer(modifier = Modifier.padding(start = 49.dp, bottom = 50.dp))
+            }
 
             Text(text = nomApp,
                 color = Color.White,
                 fontSize = 20.sp,
                 modifier = Modifier.padding(top = 10.dp)
+                    .clickable(onClick = {
+                        if(nomApp !in appsMaudites || compteurMaudits >= 50){
+                            //Ouvre l'application selectionnee
+                            val launchIntent = pm.getLaunchIntentForPackage(nomPackage)
+                            startActivity(launchIntent)
+                            finish()
+                        }else{
+                            compteurMaudits++
+                        }
+                    })
             )
+
+        }
+    }
+
+    @Composable
+    fun ListeDesApps(appListViewModel: ListeAppViewModel){
+
+        val launchableApps by appListViewModel.listeDesApps.observeAsState(emptyList())
+        val pm = packageManager
+
+        LazyColumn {
+            items(items = launchableApps) { application ->
+                ElementCheckList(
+                    nomApp = application.nomApp,
+                    nomPackage = application.nomPackage,
+                    pm = pm,
+                    contexte = this@Settings
+                )
+            }
         }
     }
 }
